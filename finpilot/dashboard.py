@@ -23,8 +23,17 @@ from importador import (
 )
 
 from relatorios import mostrar_relatorios
+
 from ia.insights import gerar_insights
-from automacao_relatorios import gerar_relatorio_automatico
+
+from ia.ia_generativa import (
+    perguntar_ia,
+    criar_prompt_financeiro
+)
+
+from automacao_relatorios import (
+    gerar_relatorio_automatico
+)
 
 
 # ============================================================
@@ -309,10 +318,6 @@ if pagina == "Dashboard":
 
     col1, col2 = st.columns(2)
 
-    # --------------------------------------------------------
-    # DESPESAS POR CATEGORIA
-    # --------------------------------------------------------
-
     with col1:
 
         st.subheader(
@@ -355,10 +360,6 @@ if pagina == "Dashboard":
             st.info(
                 "Nenhuma despesa cadastrada."
             )
-
-    # --------------------------------------------------------
-    # DISTRIBUIÇÃO
-    # --------------------------------------------------------
 
     with col2:
 
@@ -582,10 +583,6 @@ elif pagina == "Receitas":
                     st.rerun()
 
             st.divider()
-
-    # ========================================================
-    # EDIÇÃO DE RECEITA
-    # ========================================================
 
     if "editar_receita" in st.session_state:
 
@@ -848,10 +845,6 @@ elif pagina == "Despesas":
                     st.rerun()
 
             st.divider()
-
-    # ========================================================
-    # EDIÇÃO DE DESPESA
-    # ========================================================
 
     if "editar_despesa" in st.session_state:
 
@@ -1269,10 +1262,6 @@ elif pagina == "📥 Importar Extrato":
 
     st.divider()
 
-    # --------------------------------------------------------
-    # INFORMAÇÕES
-    # --------------------------------------------------------
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1290,10 +1279,6 @@ elif pagina == "📥 Importar Extrato":
         )
 
     st.divider()
-
-    # --------------------------------------------------------
-    # UPLOAD
-    # --------------------------------------------------------
 
     arquivo = st.file_uploader(
         "Escolha seu extrato",
@@ -1313,10 +1298,6 @@ elif pagina == "📥 Importar Extrato":
             arquivo.name
         ).suffix.lower()
 
-        # ----------------------------------------------------
-        # SALVA TEMPORARIAMENTE O ARQUIVO
-        # ----------------------------------------------------
-
         try:
 
             with tempfile.NamedTemporaryFile(
@@ -1332,17 +1313,9 @@ elif pagina == "📥 Importar Extrato":
                     arquivo_temporario.name
                 )
 
-            # ------------------------------------------------
-            # PROCESSAMENTO
-            # ------------------------------------------------
-
             dados_importacao = processar_csv(
                 caminho_temporario
             )
-
-            # ------------------------------------------------
-            # REMOVE ARQUIVO TEMPORÁRIO
-            # ------------------------------------------------
 
             try:
 
@@ -1373,10 +1346,6 @@ elif pagina == "📥 Importar Extrato":
                 st.subheader(
                     "📋 Pré-visualização"
                 )
-
-                # --------------------------------------------
-                # MÉTRICAS
-                # --------------------------------------------
 
                 total_importacao = len(
                     dados_importacao
@@ -1420,10 +1389,6 @@ elif pagina == "📥 Importar Extrato":
                     )
 
                 st.divider()
-
-                # --------------------------------------------
-                # TABELA
-                # --------------------------------------------
 
                 tabela_preview = (
                     dados_importacao[
@@ -1470,10 +1435,6 @@ elif pagina == "📥 Importar Extrato":
 
                 st.divider()
 
-                # --------------------------------------------
-                # CATEGORIZAÇÃO
-                # --------------------------------------------
-
                 st.subheader(
                     "🏷️ Categorização automática"
                 )
@@ -1518,10 +1479,6 @@ elif pagina == "📥 Importar Extrato":
                 )
 
                 st.divider()
-
-                # --------------------------------------------
-                # BOTÃO DE IMPORTAÇÃO
-                # --------------------------------------------
 
                 st.subheader(
                     "🚀 Importar para o FinPilot"
@@ -1644,21 +1601,29 @@ if "resultado_importacao" in st.session_state:
 
 
 # ============================================================
-# INSIGHTS V4.1
+# ASSISTENTE FINANCEIRO V4.6
 # ============================================================
 
 elif pagina == "Insights":
 
     st.title(
-        "🤖 Insights financeiros"
+        "🤖 Assistente Financeiro"
     )
 
     st.caption(
-        "Análises inteligentes baseadas "
-        "nos dados do seu FinPilot."
+        "Converse com a IA do FinPilot usando "
+        "os seus próprios dados financeiros."
     )
 
     st.divider()
+
+    # ========================================================
+    # INSIGHTS AUTOMÁTICOS
+    # ========================================================
+
+    st.subheader(
+        "🧠 Insights automáticos"
+    )
 
     insights = gerar_insights(
         df_receitas,
@@ -1676,7 +1641,233 @@ elif pagina == "Insights":
 
         for insight in insights:
 
-            st.info(insight)
+            st.info(
+                insight
+            )
+
+    st.divider()
+
+    # ========================================================
+    # MEMÓRIA DA CONVERSA
+    # ========================================================
+
+    if "historico_conversa" not in st.session_state:
+
+        st.session_state[
+            "historico_conversa"
+        ] = []
+
+    st.subheader(
+        "💬 Converse com o FinPilot"
+    )
+
+    st.caption(
+        "Faça perguntas sobre suas receitas, "
+        "despesas, categorias e metas."
+    )
+
+    st.info(
+        "🔐 Seus dados são processados localmente "
+        "pelo Ollama. Nenhuma API externa é utilizada."
+    )
+
+    # ========================================================
+    # LIMPAR CONVERSA
+    # ========================================================
+
+    if st.session_state[
+        "historico_conversa"
+    ]:
+
+        if st.button(
+            "🗑️ Limpar conversa",
+            width="stretch"
+        ):
+
+            st.session_state[
+                "historico_conversa"
+            ] = []
+
+            st.rerun()
+
+    # ========================================================
+    # VERIFICAÇÃO DE DADOS
+    # ========================================================
+
+    if (
+        df_receitas.empty
+        and df_despesas.empty
+    ):
+
+        st.warning(
+            "Adicione lançamentos financeiros "
+            "antes de conversar com a IA."
+        )
+
+    else:
+
+        # ====================================================
+        # HISTÓRICO
+        # ====================================================
+
+        if st.session_state[
+            "historico_conversa"
+        ]:
+
+            st.subheader(
+                "💬 Conversa"
+            )
+
+            for mensagem in st.session_state[
+                "historico_conversa"
+            ]:
+
+                if mensagem["papel"] == "Usuário":
+
+                    with st.chat_message("user"):
+
+                        st.write(
+                            mensagem["conteudo"]
+                        )
+
+                else:
+
+                    with st.chat_message("assistant"):
+
+                        st.markdown(
+                            mensagem["conteudo"]
+                        )
+
+            st.divider()
+
+        # ====================================================
+        # PERGUNTA
+        # ====================================================
+
+        pergunta_usuario = st.text_input(
+            "💬 Pergunte ao seu assistente financeiro",
+            placeholder=(
+                "Ex.: Onde estou gastando mais?"
+            ),
+            key="pergunta_financeira"
+        )
+
+        if st.button(
+            "🤖 Perguntar à IA",
+            type="primary",
+            width="stretch"
+        ):
+
+            if not pergunta_usuario.strip():
+
+                st.warning(
+                    "Digite uma pergunta antes "
+                    "de consultar a IA."
+                )
+
+            else:
+
+                with st.spinner(
+                    "🤖 O FinPilot está analisando seus dados..."
+                ):
+
+                    try:
+
+                        # ------------------------------------
+                        # PROMPT
+                        # ------------------------------------
+
+                        prompt = criar_prompt_financeiro(
+                            pergunta_usuario,
+                            df_receitas,
+                            df_despesas,
+                            df_metas,
+                            st.session_state[
+                                "historico_conversa"
+                            ]
+                        )
+
+                        # ------------------------------------
+                        # IA
+                        # ------------------------------------
+
+                        resposta_ia = perguntar_ia(
+                            prompt
+                        )
+
+                        # ------------------------------------
+                        # HISTÓRICO
+                        # ------------------------------------
+
+                        st.session_state[
+                            "historico_conversa"
+                        ].append(
+                            {
+                                "papel": "Usuário",
+                                "conteudo": pergunta_usuario
+                            }
+                        )
+
+                        st.session_state[
+                            "historico_conversa"
+                        ].append(
+                            {
+                                "papel": "FinPilot",
+                                "conteudo": resposta_ia
+                            }
+                        )
+
+                        st.success(
+                            "✅ Resposta gerada com sucesso!"
+                        )
+
+                        st.rerun()
+
+                    except Exception as erro:
+
+                        st.error(
+                            "❌ Não foi possível gerar "
+                            "a resposta com IA."
+                        )
+
+                        st.code(
+                            str(erro)
+                        )
+
+        # ====================================================
+        # EXEMPLOS
+        # ====================================================
+
+        st.divider()
+
+        st.caption(
+            "💡 Exemplos de perguntas:"
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+
+            st.caption(
+                "• Onde estou gastando mais?"
+            )
+
+        with col2:
+
+            st.caption(
+                "• Quanto gastei com alimentação?"
+            )
+
+        with col3:
+
+            st.caption(
+                "• Consigo guardar dinheiro?"
+            )
+
+        st.caption(
+            "🤖 Modelo: Qwen 2.5 3B • "
+            "Execução local via Ollama"
+        )
 
 
 # ============================================================

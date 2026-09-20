@@ -1,0 +1,70 @@
+# =========================
+# Python
+# =========================
+
+__pycache__/
+*.py[cod]
+*.class
+
+# =========================
+# Ambientes virtuais
+# =========================
+
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Banco de dados local
+# =========================
+
+finpilot.db
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Dados de teste / pessoais
+# =========================
+
+extrato_teste.csv
+extrato_excel_teste.xlsx
+
+# =========================
+# Relatórios gerados
+# =========================
+
+relatorios_gerados/
+*.xlsx
+*.csv
+
+# =========================
+# Sistema / IDE
+# =========================
+
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# Streamlit
+# =========================
+
+.streamlit/secrets.toml
+
+# =========================
+# Arquivos temporários
+# =========================
+
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# =========================
+# Código legado
+# =========================
+
+historico/

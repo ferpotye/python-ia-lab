@@ -2,256 +2,410 @@
 
 ### Seu dinheiro. Seu controle.
 
-O **FinPilot** é um sistema de controle financeiro pessoal desenvolvido em Python, com foco em organização financeira, análise de dados, automação e futura integração com Inteligência Artificial.
+O **FinPilot** é um sistema de gestão financeira pessoal desenvolvido em Python, criado para transformar dados financeiros em informações úteis para tomada de decisão.
 
-O projeto começou como uma aplicação financeira executada pelo terminal e evoluiu para uma aplicação completa com banco de dados, dashboard interativo, análises, importação automática de extratos e geração de relatórios.
+O projeto evoluiu de um simples controle financeiro para uma aplicação completa com **dashboard interativo, análise de dados, automação de relatórios e Inteligência Artificial generativa local**.
 
----
-
-## 📸 Interface
-
-### Dashboard
-
-![Dashboard](screenshots/dashboard.png)
-
-### Receitas
-
-![Receitas](screenshots/receitas.png)
-
-### Despesas
-
-![Despesas](screenshots/despesas.png)
-
-### Metas
-
-![Metas](screenshots/metas.png)
-
-### Relatórios
-
-![Relatórios](screenshots/relatorios.png)
-
-### Importação de Extratos
-
-![Importação de Extratos](screenshots/importar_extrato.png)
-
-
-
-### Automação de Relatórios
-
-![Automação de Relatórios](screenshots/automacao_relatorios.png)
+> 🚀 **Projeto de portfólio em evolução contínua, com foco em Python, Dados, IA e Automação.**
 
 ---
 
-## 🚀 Funcionalidades
+## ✨ Visão geral
 
-### 💵 Controle financeiro
+O FinPilot permite centralizar informações financeiras, acompanhar receitas e despesas, definir metas, importar extratos e analisar o comportamento financeiro por meio de um dashboard interativo.
 
-* Cadastro de receitas
-* Cadastro de despesas
-* Categorias financeiras
-* Histórico de lançamentos
-* Cálculo de saldo
-* Controle de metas financeiras
-* Edição e exclusão de lançamentos
+A partir da versão 4, o projeto passou a incorporar **IA generativa local**, permitindo que o usuário converse com o sistema sobre seus próprios dados financeiros.
 
-### 📊 Analytics
+### Atualmente o FinPilot possui:
 
-* Dashboard financeiro
-* Indicadores financeiros
-* Análise por categoria
-* Evolução mensal
-* Comparação entre períodos
-* Estatísticas de receitas e despesas
-* Gráficos interativos
-
-### 📥 Automação de extratos
-
-* Importação de arquivos CSV
-* Importação de arquivos Excel
-* Identificação automática de receitas e despesas
-* Padronização de dados
-* Detecção de lançamentos duplicados
-* Atualização automática de categorias
-* Categorização automática por regras
-
-### 🤖 Automação de relatórios
-
-* Geração automática de relatórios
-* Exportação para Excel
-* Exportação para CSV
-* Resumo financeiro automático
-* Análise de gastos por categoria
-* Evolução mensal
-* Separação entre receitas e despesas
+* 💰 Controle de receitas
+* 💸 Controle de despesas
+* 🎯 Metas financeiras
+* 📊 Dashboard interativo
+* 📈 Análise de dados financeiros
+* 🧠 Insights automáticos
+* 🤖 Assistente de IA generativa local
+* 💬 Conversação com histórico
+* 📥 Importação de arquivos CSV e Excel
+* 📄 Geração de relatórios
+* ⚙️ Automação de relatórios
+* 🗄️ Banco de dados SQLite
+* 🔎 Análise por categorias
+* 📊 Indicadores financeiros
+* 💡 Recomendações baseadas nos dados fornecidos ao modelo
 
 ---
 
-## 🏗️ Arquitetura
+# 🤖 Inteligência Artificial
+
+Uma das principais evoluções do FinPilot foi a integração de **IA generativa local**, sem depender inicialmente de APIs pagas.
+
+A aplicação utiliza:
+
+* **Ollama**
+* **Qwen 2.5 3B**
+* Python
+* Contexto financeiro estruturado
+* Histórico de conversação
+
+A IA recebe informações financeiras calculadas pelo próprio sistema e pode responder perguntas relacionadas ao comportamento financeiro.
+
+### Exemplos
+
+```text
+Onde estou gastando mais?
+
+Quanto eu gastei com alimentação?
+
+Consigo guardar dinheiro este mês?
+
+Quais despesas estão pesando mais no meu orçamento?
+
+Como posso reduzir meus gastos?
+
+Como estão minhas metas financeiras?
+```
+
+A partir da V4.5, o FinPilot também passou a manter **memória da conversa durante a sessão**, permitindo perguntas de continuidade.
+
+Exemplo:
+
+```text
+Usuário:
+Onde estou gastando mais?
+
+FinPilot:
+Sua maior categoria de despesas é Alimentação.
+
+Usuário:
+E quanto foi nessa categoria?
+
+FinPilot:
+Você gastou R$ X em Alimentação.
+```
+
+A camada de IA foi organizada separadamente do dashboard, mantendo a lógica de geração de contexto e prompts dentro do módulo:
+
+```text
+ia/
+└── ia_generativa.py
+```
+
+---
+
+# 🧠 Arquitetura
+
+O projeto foi estruturado de forma modular para separar interface, banco de dados, análise, relatórios, automação e inteligência artificial.
 
 ```text
 FinPilot
 │
-├── Interface
-│   ├── Dashboard
-│   ├── Receitas
-│   ├── Despesas
-│   ├── Metas
-│   └── Relatórios
+├── dashboard.py
+│   └── Interface principal em Streamlit
 │
-├── Core
-│   ├── Cálculos financeiros
-│   ├── Categorias
-│   └── Regras de negócio
-│
-├── Dados
+├── database.py
 │   └── Banco de dados SQLite
 │
-├── Analytics
-│   ├── Estatísticas
-│   └── Gráficos
+├── importador.py
+│   └── Importação e processamento de CSV/Excel
 │
-├── IA
-│   ├── Análise de gastos
-│   ├── Insights
-│   └── Assistente financeiro
+├── analytics.py
+│   └── Análises financeiras
 │
-└── Automação
-    ├── Importação de extratos
-    └── Relatórios automáticos
+├── charts.py
+│   └── Visualizações
+│
+├── relatorios.py
+│   └── Geração de relatórios
+│
+├── automacao_relatorios.py
+│   └── Automação de relatórios
+│
+├── ia/
+│   ├── ia_generativa.py
+│   │   └── IA generativa local
+│   │
+│   └── insights.py
+│       └── Insights financeiros
+│
+├── screenshots/
+│   └── Evidências visuais do projeto
+│
+└── finpilot.db
+    └── Banco de dados local
 ```
 
 ---
 
-## 🛠️ Tecnologias
+# 🛠️ Tecnologias
 
-* Python
-* SQLite
-* Pandas
-* NumPy
-* Matplotlib
-* Plotly
-* Streamlit
-* Excel
-* CSV
-* Git
-* GitHub
-
----
-
-## ▶️ Como executar
-
-Clone o repositório:
-
-```bash
-git clone https://github.com/ferpotye/python-ia-lab.git
-```
-
-Entre na pasta do projeto:
-
-```bash
-cd python-ia-lab/finpilot
-```
-
-Execute o Dashboard:
-
-```bash
-streamlit run dashboard.py
-```
-
-O Streamlit abrirá o FinPilot no navegador.
+| Tecnologia     | Utilização                     |
+| -------------- | ------------------------------ |
+| 🐍 Python      | Desenvolvimento principal      |
+| 🎨 Streamlit   | Interface web                  |
+| 🗄️ SQLite     | Banco de dados                 |
+| 🐼 Pandas      | Manipulação e análise de dados |
+| 🔢 NumPy       | Operações e análises numéricas |
+| 📊 Plotly      | Visualizações interativas      |
+| 📈 Matplotlib  | Gráficos                       |
+| 📄 Excel       | Importação e relatórios        |
+| 📋 CSV         | Importação de dados            |
+| 🤖 Ollama      | Execução local de modelos      |
+| 🧠 Qwen 2.5 3B | Modelo de IA generativa        |
+| 🔧 Git         | Controle de versão             |
+| 🐙 GitHub      | Versionamento e portfólio      |
 
 ---
 
-## 📊 Fluxo de utilização
+📊 Dashboard
 
-```text
+O dashboard concentra as principais informações financeiras em uma única interface.
+
+Entre os indicadores disponíveis estão:
+
+Total de receitas
+Total de despesas
+Saldo
+Percentual da renda comprometida
+Distribuição das despesas
+Principais categorias
+Maiores despesas
+Evolução financeira
+Metas financeiras
+Insights
+💳 Controle financeiro
+
+O FinPilot permite registrar e administrar:
+
+Receitas
+Descrição
+Categoria
+Valor
+Data
+Despesas
+Descrição
+Categoria
+Valor
+Data
+
+Os lançamentos são armazenados no banco SQLite e utilizados posteriormente nas análises.
+
+🎯 Metas financeiras
+
+O sistema também permite criar e acompanhar metas.
+
+Cada meta pode possuir:
+
+Nome
+Valor objetivo
+Valor acumulado
+Progresso
+Status
+
+Isso permite acompanhar visualmente a evolução financeira.
+
+📥 Importação de extratos
+
+O FinPilot possui suporte para importação de dados financeiros através de:
+
+CSV
+Excel/XLSX
+
+O fluxo básico é:
+
 Extrato bancário
        ↓
-Importação CSV/Excel
+Importação
        ↓
-Validação dos dados
+Processamento
        ↓
-Identificação de receitas/despesas
+Classificação
        ↓
-Categorização automática
-       ↓
-Banco de dados SQ   Lite
+Banco SQLite
        ↓
 Analytics
        ↓
 Dashboard
        ↓
-Relatórios automáticos
+Relatórios
        ↓
-Excel / CSV
-```
+IA
+📄 Relatórios
 
----
+O sistema possui geração de relatórios financeiros a partir dos dados armazenados.
 
-## 🧠 Evolução do projeto
+Os relatórios podem ser utilizados para acompanhar:
 
-### V1 — Controle financeiro
+Receitas
+Despesas
+Categorias
+Saldo
+Evolução financeira
+Indicadores
 
-✅ Controle de receitas e despesas
-✅ Categorias
-✅ Metas
-✅ Histórico
-✅ Análise financeira baseada em regras
+O projeto também possui uma camada específica para automação de relatórios.
 
-### V2 — Banco de dados e Analytics
+🧩 Organização do projeto
 
-✅ SQLite
-✅ Pandas
-✅ Dashboard com Streamlit
-✅ Gráficos interativos
-✅ Filtros
-✅ Relatórios
-✅ Exportação CSV/Excel
+A arquitetura busca manter cada responsabilidade em seu próprio módulo.
 
-### V3 — Automação
+Interface
+   ↓
+Dashboard
+   ↓
+Regras de negócio
+   ↓
+Banco de dados
+   ↓
+Analytics
+   ↓
+Relatórios
+   ↓
+Insights
+   ↓
+IA Generativa
 
-✅ Importação de extratos
-✅ Processamento automático
-✅ Detecção de duplicidades
-✅ Categorização automática
-✅ Geração automática de relatórios
-✅ Exportação automática para Excel e CSV
-✅ Integração da automação ao Dashboard
+Essa separação facilita a manutenção e permite que novas funcionalidades sejam adicionadas sem concentrar toda a lógica em um único arquivo.
 
-### V4 — Inteligência Artificial
+🚀 Como executar
+1. Clone o projeto
+git clone https://github.com/ferpotye/python-ia-lab.git
+2. Entre na pasta do FinPilot
+cd python-ia-lab/finpilot
+3. Instale as dependências
+pip install -r requirements.txt
+4. Instale o Ollama
 
-🔜 Insights financeiros utilizando IA
-🔜 Análise inteligente dos gastos
-🔜 Recomendações personalizadas
-🔜 Assistente financeiro conversacional
+O FinPilot utiliza o Ollama para executar o modelo de IA localmente.
 
-### Futuro — Agentes de IA
+Depois de instalar o Ollama, baixe o modelo utilizado pelo projeto:
 
-🔜 Agente financeiro autônomo
-🔜 Automação de tarefas
-🔜 Análise contínua das finanças
-🔜 Geração inteligente de relatórios
-🔜 Integração com outras fontes de dados
+ollama pull qwen2.5:3b
+5. Execute o dashboard
+streamlit run dashboard.py
 
----
+Depois, abra o endereço apresentado pelo Streamlit no navegador.
 
-## 🎯 Objetivo
+🖼️ Screenshots
+Dashboard
 
-O objetivo do FinPilot é evoluir de uma aplicação tradicional de controle financeiro para uma solução inteligente capaz de **analisar dados, identificar padrões, gerar insights e automatizar tarefas financeiras**.
 
-O projeto também faz parte do meu processo de desenvolvimento de habilidades em:
 
-* Python
-* Análise de dados
-* Automação
-* Inteligência Artificial
-* Desenvolvimento de aplicações
-* Construção de soluções reais
 
----
+Assistente de IA
 
-## 👩‍💻 Autora
 
-**Fernanda Potye**
 
-Projeto desenvolvido como parte da minha jornada de aprendizado em Python, Inteligência Artificial, Analytics e Automação.
+
+Sistema de metas
+
+
+
+
+Relatórios
+
+
+
+
+As imagens representam diferentes etapas da evolução do FinPilot e servem também como evidência visual do desenvolvimento do projeto.
+
+📈 Evolução do projeto
+
+O FinPilot foi desenvolvido de forma incremental.
+
+V1 — Controle financeiro
+Cadastro de receitas
+Cadastro de despesas
+Controle básico
+V2 — Dados e Analytics
+Banco SQLite
+Estruturação dos dados
+Indicadores financeiros
+Análises
+V3 — Automação
+Importação de extratos
+Relatórios
+Automação de processos
+Dashboard interativo
+V4 — Inteligência Artificial
+Insights financeiros
+IA generativa local
+Ollama
+Qwen 2.5 3B
+Contexto financeiro
+Assistente conversacional
+V4.5 — Memória conversacional
+Histórico de conversa
+Perguntas de continuidade
+Contexto entre mensagens
+Interface de chat
+V4.6 — Organização da camada de IA
+Lógica conversacional centralizada
+Construção de contexto financeiro
+Histórico integrado ao prompt
+Separação entre dashboard e camada de IA
+Estrutura preparada para evolução futura
+V5.0 — Consolidação
+
+Objetivos desta etapa:
+
+Organização final do projeto
+Documentação profissional
+Padronização das dependências
+Organização do GitHub
+Evidências visuais
+Preparação para evolução do FinPilot como projeto de portfólio
+🔮 Próximos passos
+
+O FinPilot foi projetado para continuar evoluindo.
+
+Possíveis próximas etapas:
+
+🤖 Transformar a IA em um agente financeiro mais autônomo
+🧠 Melhorar a memória da IA
+📊 Criar análises financeiras mais avançadas
+🔄 Automatizar processos recorrentes
+📥 Integrar novas fontes de dados
+📄 Criar relatórios inteligentes
+🔔 Criar alertas financeiros
+🧩 Melhorar a arquitetura de agentes
+🌐 Preparar uma versão para publicação
+☁️ Avaliar infraestrutura para execução remota
+🔐 Melhorar segurança e gerenciamento de dados
+🔐 Dados e privacidade
+
+O FinPilot foi desenvolvido inicialmente para execução local.
+
+Isso significa que os dados financeiros utilizados durante o desenvolvimento permanecem no ambiente local da aplicação.
+
+O projeto utiliza SQLite para armazenamento e Ollama para execução local do modelo de IA.
+
+⚠️ Antes de publicar o projeto no GitHub, não envie dados financeiros pessoais, banco de dados contendo informações reais ou outros arquivos privados para o repositório.
+
+Para demonstrações públicas, recomenda-se utilizar dados fictícios ou anonimizados.
+
+🎓 Objetivo do projeto
+
+O FinPilot nasceu como um projeto prático para desenvolver e demonstrar conhecimentos em:
+
+Python
+Engenharia de software
+Banco de dados
+Análise de dados
+Automação
+Inteligência Artificial
+IA generativa
+Desenvolvimento de aplicações
+Git e GitHub
+
+Mais do que uma aplicação financeira, o FinPilot representa uma jornada de evolução técnica: de um programa simples para controle financeiro até uma aplicação integrada com dados + automação + IA generativa.
+
+👩‍💻 Autora
+
+Fernanda Potye
+
+Projeto desenvolvido como parte da evolução prática em Python, Inteligência Artificial, Dados e Automação.
+
+⭐ FinPilot
+
+Seu dinheiro. Seu controle. Seus dados. Sua IA.
