@@ -23,9 +23,9 @@ from importador import (
 )
 
 from relatorios import mostrar_relatorios
-
-
+from ia.insights import gerar_insights
 from automacao_relatorios import gerar_relatorio_automatico
+
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -1644,92 +1644,39 @@ if "resultado_importacao" in st.session_state:
 
 
 # ============================================================
-# INSIGHTS
+# INSIGHTS V4.1
 # ============================================================
 
-if pagina == "Insights":
+elif pagina == "Insights":
 
     st.title(
         "🤖 Insights financeiros"
     )
 
     st.caption(
-        "Análises automáticas baseadas "
-        "nos seus dados."
+        "Análises inteligentes baseadas "
+        "nos dados do seu FinPilot."
     )
 
-    if total_receitas == 0:
+    st.divider()
+
+    insights = gerar_insights(
+        df_receitas,
+        df_despesas
+    )
+
+    if not insights:
 
         st.info(
-            "Cadastre receitas para gerar insights."
+            "Ainda não existem dados suficientes "
+            "para gerar insights."
         )
 
     else:
 
-        if percentual >= 90:
+        for insight in insights:
 
-            st.warning(
-                "⚠️ Suas despesas estão consumindo "
-                "uma parcela muito alta da sua renda."
-            )
-
-        elif percentual >= 70:
-
-            st.warning(
-                "⚠️ Mais de 70% da sua renda está "
-                "comprometida com despesas."
-            )
-
-        else:
-
-            st.success(
-                "✅ Suas despesas estão abaixo "
-                "de 70% da sua renda."
-            )
-
-        if saldo > 0:
-
-            st.success(
-                f"💰 Você possui um saldo positivo "
-                f"de {formatar_moeda(saldo)}."
-            )
-
-        elif saldo < 0:
-
-            st.error(
-                f"🚨 Suas despesas ultrapassaram "
-                f"suas receitas em "
-                f"{formatar_moeda(abs(saldo))}."
-            )
-
-        else:
-
-            st.info(
-                "Seu saldo está zerado."
-            )
-
-        if not df_despesas.empty:
-
-            categoria_maior = (
-                df_despesas
-                .groupby("categoria")["valor"]
-                .sum()
-                .idxmax()
-            )
-
-            valor_categoria = (
-                df_despesas
-                .groupby("categoria")["valor"]
-                .sum()
-                .max()
-            )
-
-            st.info(
-                f"🏷️ Sua maior categoria de "
-                f"despesas é **{categoria_maior}**, "
-                f"com "
-                f"{formatar_moeda(valor_categoria)}."
-            )
+            st.info(insight)
 
 
 # ============================================================
