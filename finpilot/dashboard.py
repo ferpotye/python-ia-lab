@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import tempfile
+from pathlib import Path
 
 from database import (
     buscar_receitas,
@@ -15,8 +17,15 @@ from database import (
     excluir_meta
 )
 
+from importador import (
+    processar_csv,
+    salvar_lancamentos
+)
+
 from relatorios import mostrar_relatorios
 
+
+from automacao_relatorios import gerar_relatorio_automatico
 
 # ============================================================
 # CONFIGURAÇÃO
@@ -86,6 +95,7 @@ st.markdown("""
 # ============================================================
 
 def formatar_moeda(valor):
+
     return (
         f"R$ {valor:,.2f}"
         .replace(",", "X")
@@ -238,6 +248,7 @@ pagina = st.sidebar.radio(
         "Despesas",
         "Metas",
         "Relatórios",
+        "📥 Importar Extrato",
         "Insights"
     ]
 )
@@ -1133,12 +1144,510 @@ elif pagina == "Relatórios":
         df_despesas
     )
 
+    st.divider()
+
+    st.subheader(
+        "🤖 Automação de Relatórios"
+    )
+
+    st.caption(
+        "Gere automaticamente relatórios "
+        "com os dados atuais do FinPilot."
+    )
+
+    if st.button(
+        "🤖 Gerar relatório automaticamente",
+        type="primary",
+        width="stretch"
+    ):
+
+        try:
+
+            resultado = (
+                gerar_relatorio_automatico()
+            )
+
+            caminho_excel = (
+                resultado["excel"]
+            )
+
+            caminho_csv = (
+                resultado["csv"]
+            )
+
+            st.session_state[
+                "relatorios_gerados"
+            ] = {
+                "excel": caminho_excel,
+                "csv": caminho_csv
+            }
+
+            st.success(
+                "✅ Relatórios gerados "
+                "com sucesso!"
+            )
+
+        except Exception as erro:
+
+            st.error(
+                f"❌ Erro ao gerar relatórios: {erro}"
+            )
+
+    if "relatorios_gerados" in st.session_state:
+
+        relatorios = (
+            st.session_state[
+                "relatorios_gerados"
+            ]
+        )
+
+        st.write(
+            "📊 Seus relatórios estão prontos:"
+        )
+
+        caminho_excel = Path(
+            relatorios["excel"]
+        )
+
+        caminho_csv = Path(
+            relatorios["csv"]
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            if caminho_excel.exists():
+
+                with open(
+                    caminho_excel,
+                    "rb"
+                ) as arquivo:
+
+                    st.download_button(
+                        label="📗 Baixar relatório Excel",
+                        data=arquivo.read(),
+                        file_name=caminho_excel.name,
+                        mime=(
+                            "application/"
+                            "vnd.openxmlformats-officedocument."
+                            "spreadsheetml.sheet"
+                        ),
+                        width="stretch"
+                    )
+
+        with col2:
+
+            if caminho_csv.exists():
+
+                with open(
+                    caminho_csv,
+                    "rb"
+                ) as arquivo:
+
+                    st.download_button(
+                        label="📄 Baixar relatório CSV",
+                        data=arquivo.read(),
+                        file_name=caminho_csv.name,
+                        mime="text/csv",
+                        width="stretch"
+                    )
+
+
+# ============================================================
+# IMPORTAR EXTRATO
+# ============================================================
+
+elif pagina == "📥 Importar Extrato":
+
+    st.title("📥 Importar Extrato")
+
+    st.caption(
+        "Importe seus lançamentos financeiros "
+        "automaticamente a partir de arquivos CSV ou Excel."
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # INFORMAÇÕES
+    # --------------------------------------------------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.info(
+            "📄 O arquivo precisa conter as colunas: "
+            "**data**, **descricao** e **valor**."
+        )
+
+    with col2:
+
+        st.info(
+            "🤖 O FinPilot identifica automaticamente "
+            "receitas, despesas e categorias."
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # UPLOAD
+    # --------------------------------------------------------
+
+    arquivo = st.file_uploader(
+        "Escolha seu extrato",
+        type=["csv", "xlsx"],
+        help=(
+            "Formatos aceitos: CSV e Excel (.xlsx)"
+        )
+    )
+
+    if arquivo is not None:
+
+        st.success(
+            f"📄 Arquivo selecionado: **{arquivo.name}**"
+        )
+
+        extensao = Path(
+            arquivo.name
+        ).suffix.lower()
+
+        # ----------------------------------------------------
+        # SALVA TEMPORARIAMENTE O ARQUIVO
+        # ----------------------------------------------------
+
+        try:
+
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=extensao
+            ) as arquivo_temporario:
+
+                arquivo_temporario.write(
+                    arquivo.getbuffer()
+                )
+
+                caminho_temporario = (
+                    arquivo_temporario.name
+                )
+
+            # ------------------------------------------------
+            # PROCESSAMENTO
+            # ------------------------------------------------
+
+            dados_importacao = processar_csv(
+                caminho_temporario
+            )
+
+            # ------------------------------------------------
+            # REMOVE ARQUIVO TEMPORÁRIO
+            # ------------------------------------------------
+
+            try:
+
+                Path(
+                    caminho_temporario
+                ).unlink()
+
+            except Exception:
+
+                pass
+
+            if dados_importacao is None:
+
+                st.error(
+                    "❌ Não foi possível processar "
+                    "o arquivo."
+                )
+
+            elif dados_importacao.empty:
+
+                st.warning(
+                    "⚠️ Nenhum lançamento válido "
+                    "foi encontrado no arquivo."
+                )
+
+            else:
+
+                st.subheader(
+                    "📋 Pré-visualização"
+                )
+
+                # --------------------------------------------
+                # MÉTRICAS
+                # --------------------------------------------
+
+                total_importacao = len(
+                    dados_importacao
+                )
+
+                total_receitas_importacao = len(
+                    dados_importacao[
+                        dados_importacao["tipo"]
+                        == "receita"
+                    ]
+                )
+
+                total_despesas_importacao = len(
+                    dados_importacao[
+                        dados_importacao["tipo"]
+                        == "despesa"
+                    ]
+                )
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+
+                    st.metric(
+                        "📊 Lançamentos",
+                        total_importacao
+                    )
+
+                with col2:
+
+                    st.metric(
+                        "💰 Receitas",
+                        total_receitas_importacao
+                    )
+
+                with col3:
+
+                    st.metric(
+                        "💸 Despesas",
+                        total_despesas_importacao
+                    )
+
+                st.divider()
+
+                # --------------------------------------------
+                # TABELA
+                # --------------------------------------------
+
+                tabela_preview = (
+                    dados_importacao[
+                        [
+                            "data",
+                            "descricao",
+                            "valor",
+                            "tipo"
+                        ]
+                    ]
+                    .copy()
+                )
+
+                tabela_preview["data"] = (
+                    tabela_preview["data"]
+                    .dt.strftime("%d/%m/%Y")
+                )
+
+                tabela_preview["tipo"] = (
+                    tabela_preview["tipo"]
+                    .replace({
+                        "receita": "Receita",
+                        "despesa": "Despesa"
+                    })
+                )
+
+                tabela_preview["valor"] = (
+                    tabela_preview["valor"]
+                    .map(formatar_moeda)
+                )
+
+                tabela_preview.columns = [
+                    "Data",
+                    "Descrição",
+                    "Valor",
+                    "Tipo"
+                ]
+
+                st.dataframe(
+                    tabela_preview,
+                    width="stretch",
+                    hide_index=True
+                )
+
+                st.divider()
+
+                # --------------------------------------------
+                # CATEGORIZAÇÃO
+                # --------------------------------------------
+
+                st.subheader(
+                    "🏷️ Categorização automática"
+                )
+
+                categorias_preview = (
+                    dados_importacao[
+                        ["descricao", "tipo"]
+                    ]
+                    .copy()
+                )
+
+                categorias_preview["categoria"] = (
+                    dados_importacao["descricao"]
+                    .apply(
+                        lambda descricao:
+                        __import__(
+                            "importador"
+                        ).categorizar_lancamento(
+                            descricao
+                        )
+                    )
+                )
+
+                categorias_preview["tipo"] = (
+                    categorias_preview["tipo"]
+                    .replace({
+                        "receita": "Receita",
+                        "despesa": "Despesa"
+                    })
+                )
+
+                categorias_preview.columns = [
+                    "Descrição",
+                    "Tipo",
+                    "Categoria"
+                ]
+
+                st.dataframe(
+                    categorias_preview,
+                    width="stretch",
+                    hide_index=True
+                )
+
+                st.divider()
+
+                # --------------------------------------------
+                # BOTÃO DE IMPORTAÇÃO
+                # --------------------------------------------
+
+                st.subheader(
+                    "🚀 Importar para o FinPilot"
+                )
+
+                st.write(
+                    "O FinPilot verificará automaticamente "
+                    "se os lançamentos já existem no banco "
+                    "de dados antes de salvá-los."
+                )
+
+                if st.button(
+                    "🚀 Importar lançamentos",
+                    type="primary",
+                    width="stretch"
+                ):
+
+                    resultado = salvar_lancamentos(
+                        dados_importacao
+                    )
+
+                    st.session_state[
+                        "resultado_importacao"
+                    ] = resultado
+
+                    st.rerun()
+
+        except Exception as erro:
+
+            st.error(
+                f"❌ Erro ao processar arquivo: {erro}"
+            )
+
+
+# ============================================================
+# RESULTADO DA IMPORTAÇÃO
+# ============================================================
+
+if "resultado_importacao" in st.session_state:
+
+    resultado = (
+        st.session_state[
+            "resultado_importacao"
+        ]
+    )
+
+    st.divider()
+
+    st.subheader(
+        "✅ Importação concluída"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "🆕 Novos lançamentos",
+            resultado["novos"]
+        )
+
+    with col2:
+
+        st.metric(
+            "🔁 Duplicados",
+            resultado["duplicados"]
+        )
+
+    with col3:
+
+        st.metric(
+            "🏷️ Categorias atualizadas",
+            resultado[
+                "categorias_atualizadas"
+            ]
+        )
+
+    if resultado["novos"] > 0:
+
+        st.success(
+            f"🎉 {resultado['novos']} "
+            "novos lançamentos foram adicionados."
+        )
+
+    elif resultado["duplicados"] > 0:
+
+        st.info(
+            "ℹ️ Todos os lançamentos enviados "
+            "já estavam registrados no FinPilot."
+        )
+
+    detalhes = resultado.get(
+        "detalhes"
+    )
+
+    if (
+        detalhes is not None
+        and not detalhes.empty
+    ):
+
+        st.subheader(
+            "📋 Resultado dos lançamentos"
+        )
+
+        st.dataframe(
+            detalhes,
+            width="stretch",
+            hide_index=True
+        )
+
+    if st.button(
+        "✖️ Fechar resultado"
+    ):
+
+        del st.session_state[
+            "resultado_importacao"
+        ]
+
+        st.rerun()
+
 
 # ============================================================
 # INSIGHTS
 # ============================================================
 
-elif pagina == "Insights":
+if pagina == "Insights":
 
     st.title(
         "🤖 Insights financeiros"

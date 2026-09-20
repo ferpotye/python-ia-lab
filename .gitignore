@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.idea/
+
+# Banco de dados local
+*.db
+*.db-shm
+*.db-wal
+
+# Arquivos de teste
+finpilot/extrato_excel_teste.xlsx
+finpilot/extrato_teste.csv
+finpilot/teste_python.py
+finpilot/screenshots.py
+
+# Relatórios gerados automaticamente
+finpilot/relatorios_gerados/
+
+# Arquivos temporários
+*.tmp
+*.temp

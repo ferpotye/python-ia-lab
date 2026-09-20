@@ -1,4 +1,5 @@
 import pandas as pd
+import unicodedata
 from pathlib import Path
 
 from database import (
@@ -7,75 +8,289 @@ from database import (
     receita_existe,
     despesa_existe,
     atualizar_categoria_receita,
-    atualizar_categoria_despesa
+    atualizar_categoria_despesa,
 )
 
 
-# ============================================================
-# CONFIGURAÇÃO
-# ============================================================
-
-COLUNAS_OBRIGATORIAS = [
-    "data",
-    "descricao",
-    "valor"
-]
+COLUNAS_OBRIGATORIAS = ["data", "descricao", "valor"]
 
 
 # ============================================================
-# LEITURA DO CSV / EXCEL
+# NORMALIZAÇÃO DE TEXTO
+# ============================================================
+
+def normalizar_texto(texto):
+    """
+    Normaliza textos para facilitar a categorização.
+
+    Exemplos:
+    Farmácia -> farmacia
+    SALÁRIO -> salario
+    "  Uber  " -> uber
+    """
+
+    texto = str(texto).strip().lower()
+
+    texto = unicodedata.normalize("NFKD", texto)
+
+    texto = "".join(
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(caractere)
+    )
+
+    return texto
+
+
+# ============================================================
+# REGRAS DE CATEGORIZAÇÃO
+# ============================================================
+
+REGRAS_CATEGORIAS = {
+
+    "moradia": [
+        "aluguel",
+        "condominio",
+        "energia",
+        "enel",
+        "cpfl",
+        "cemig",
+        "light",
+        "luz",
+        "sabesp",
+        "agua",
+        "saneamento",
+        "gas",
+        "naturgy",
+        "comgas",
+        "vivo fibra",
+        "claro internet",
+        "tim fibra",
+        "telefone",
+        "internet",
+    ],
+
+    "alimentação": [
+        "mercado",
+        "supermercado",
+        "carrefour",
+        "atacadao",
+        "pao de acucar",
+        "assai",
+        "extra",
+        "dia supermercado",
+        "ifood",
+        "rappi",
+        "uber eats",
+        "restaurante",
+        "lanchonete",
+        "lanche",
+        "padaria",
+        "pizzaria",
+        "hamburguer",
+        "burger",
+        "mcdonald",
+        "subway",
+        "habibs",
+        "bk",
+        "outback",
+    ],
+
+    "transporte": [
+        "uber",
+        "99",
+        "99pop",
+        "combustivel",
+        "gasolina",
+        "etanol",
+        "alcool",
+        "shell",
+        "ipiranga",
+        "br distribuidora",
+        "posto",
+        "estacionamento",
+        "sem parar",
+        "pedagio",
+        "metro",
+        "trem",
+        "onibus",
+        "bilhete unico",
+    ],
+
+    "lazer": [
+        "netflix",
+        "spotify",
+        "prime video",
+        "amazon prime",
+        "disney",
+        "disney+",
+        "hbo",
+        "hbo max",
+        "max",
+        "paramount",
+        "globoplay",
+        "youtube premium",
+        "cinema",
+        "ingresso",
+        "teatro",
+        "show",
+        "steam",
+        "playstation",
+        "xbox",
+        "nintendo",
+        "jogo",
+        "games",
+    ],
+
+    "saúde": [
+        "farmacia",
+        "drogasil",
+        "droga raia",
+        "pague menos",
+        "drogaria",
+        "hospital",
+        "clinica",
+        "medico",
+        "consulta",
+        "laboratorio",
+        "exame",
+        "dentista",
+        "odontologia",
+        "plano de saude",
+        "unimed",
+        "amil",
+        "bradesco saude",
+    ],
+
+    "trabalho": [
+        "salario",
+        "freelance",
+        "pagamento",
+        "comissao",
+        "bonus",
+        "premio",
+        "pro labore",
+        "vale alimentacao",
+        "vale refeicao",
+        "beneficio",
+    ],
+
+    "educação": [
+        "faculdade",
+        "universidade",
+        "escola",
+        "curso",
+        "udemy",
+        "alura",
+        "coursera",
+        "descomplica",
+        "livro",
+        "livraria",
+        "material escolar",
+    ],
+
+    "compras": [
+        "amazon",
+        "mercado livre",
+        "mercadolivre",
+        "magalu",
+        "magazine luiza",
+        "shopee",
+        "shein",
+        "renner",
+        "riachuelo",
+        "cea",
+        "c&a",
+        "zattini",
+        "loja",
+        "shopping",
+        "roupa",
+        "calcado",
+        "sapato",
+        "eletronico",
+    ],
+
+    "serviços": [
+        "servico",
+        "manutencao",
+        "conserto",
+        "assistencia tecnica",
+        "faxina",
+        "diarista",
+        "cabeleireiro",
+        "barbearia",
+        "salao",
+        "manicure",
+        "pedicure",
+    ],
+}
+
+
+# ============================================================
+# CATEGORIZAÇÃO AUTOMÁTICA
+# ============================================================
+
+def categorizar_lancamento(descricao):
+    """
+    Identifica automaticamente a categoria de um lançamento.
+    """
+
+    descricao_normalizada = normalizar_texto(descricao)
+
+    for categoria, palavras_chave in REGRAS_CATEGORIAS.items():
+
+        for palavra in palavras_chave:
+
+            palavra_normalizada = normalizar_texto(palavra)
+
+            if palavra_normalizada in descricao_normalizada:
+                return categoria
+
+    return "outros"
+
+
+# ============================================================
+# IMPORTAÇÃO DO ARQUIVO
 # ============================================================
 
 def importar_arquivo(caminho):
+    """
+    Importa arquivos CSV ou XLSX.
+    """
 
-    try:
+    caminho = Path(caminho)
 
-        extensao = Path(caminho).suffix.lower()
-
-        if extensao == ".csv":
-
-            df = pd.read_csv(caminho)
-
-        elif extensao == ".xlsx":
-
-            df = pd.read_excel(
-                caminho,
-                engine="openpyxl"
-            )
-
-        else:
-
-            print(
-                "❌ Formato de arquivo não suportado."
-            )
-
-            return None
-
-        # ----------------------------------------------------
-        # NORMALIZAÇÃO DOS NOMES DAS COLUNAS
-        # ----------------------------------------------------
-
-        df.columns = (
-            df.columns
-            .astype(str)
-            .str.strip()
-            .str.lower()
+    if not caminho.exists():
+        raise FileNotFoundError(
+            f"Arquivo não encontrado: {caminho}"
         )
 
-        print(
-            "📋 Colunas encontradas:",
-            list(df.columns)
+    extensao = caminho.suffix.lower()
+
+    if extensao == ".csv":
+
+        df = pd.read_csv(caminho)
+
+    elif extensao == ".xlsx":
+
+        df = pd.read_excel(
+            caminho,
+            engine="openpyxl"
         )
 
-        return df
+    else:
 
-    except Exception as erro:
-
-        print(
-            f"❌ Erro ao importar arquivo: {erro}"
+        raise ValueError(
+            "Formato não suportado. "
+            "Utilize CSV ou XLSX."
         )
 
-        return None
+    df.columns = [
+        str(coluna).strip().lower()
+        for coluna in df.columns
+    ]
+
+    return df
 
 
 # ============================================================
@@ -84,44 +299,54 @@ def importar_arquivo(caminho):
 
 def validar_csv(df):
 
-    if df is None:
+    colunas_faltantes = [
+        coluna
+        for coluna in COLUNAS_OBRIGATORIAS
+        if coluna not in df.columns
+    ]
 
-        return False
+    if colunas_faltantes:
 
-    for coluna in COLUNAS_OBRIGATORIAS:
-
-        if coluna not in df.columns:
-
-            print(
-                f"❌ Coluna obrigatória "
-                f"não encontrada: {coluna}"
-            )
-
-            return False
+        raise ValueError(
+            "Colunas obrigatórias ausentes: "
+            + ", ".join(colunas_faltantes)
+        )
 
     return True
 
 
 # ============================================================
-# CLASSIFICAÇÃO
+# CLASSIFICAÇÃO DOS LANÇAMENTOS
 # ============================================================
 
 def classificar_lancamentos(df):
 
     df = df.copy()
 
-    # --------------------------------------------------------
-    # CONVERSÃO DA DATA
-    # --------------------------------------------------------
-
     df["data"] = pd.to_datetime(
         df["data"],
-        dayfirst=True
+        dayfirst=True,
+        errors="coerce"
     )
 
-    # --------------------------------------------------------
-    # IDENTIFICAÇÃO DO TIPO
-    # --------------------------------------------------------
+    df["valor"] = pd.to_numeric(
+        df["valor"],
+        errors="coerce"
+    )
+
+    df["descricao"] = (
+        df["descricao"]
+        .astype(str)
+        .str.strip()
+    )
+
+    df = df.dropna(
+        subset=[
+            "data",
+            "descricao",
+            "valor"
+        ]
+    )
 
     df["tipo"] = df["valor"].apply(
         lambda valor:
@@ -130,104 +355,24 @@ def classificar_lancamentos(df):
         else "despesa"
     )
 
-    # --------------------------------------------------------
-    # TRANSFORMA DESPESAS EM VALORES POSITIVOS
-    # --------------------------------------------------------
-
     df["valor"] = df["valor"].abs()
+
+    df["categoria"] = df["descricao"].apply(
+        categorizar_lancamento
+    )
 
     return df
 
 
 # ============================================================
-# CATEGORIZAÇÃO AUTOMÁTICA
-# ============================================================
-
-def categorizar_lancamento(descricao):
-
-    descricao = descricao.lower()
-
-    categorias = {
-
-        "moradia": [
-            "aluguel",
-            "condominio",
-            "condomínio",
-            "energia",
-            "luz",
-            "água",
-            "agua",
-            "gás",
-            "gas"
-        ],
-
-        "alimentação": [
-            "mercado",
-            "supermercado",
-            "ifood",
-            "restaurante",
-            "lanche",
-            "padaria"
-        ],
-
-        "transporte": [
-            "uber",
-            "99",
-            "combustível",
-            "combustivel",
-            "gasolina",
-            "estacionamento"
-        ],
-
-        "lazer": [
-            "netflix",
-            "spotify",
-            "cinema",
-            "prime video",
-            "disney"
-        ],
-
-        "saúde": [
-            "farmácia",
-            "farmacia",
-            "médico",
-            "medico",
-            "hospital",
-            "consulta"
-        ],
-
-        "trabalho": [
-            "salário",
-            "salario",
-            "freelance",
-            "pagamento",
-            "comissão",
-            "comissao"
-        ]
-    }
-
-    for categoria, palavras in categorias.items():
-
-        for palavra in palavras:
-
-            if palavra in descricao:
-
-                return categoria
-
-    return "outros"
-
-
-# ============================================================
-# PROCESSAMENTO
+# PROCESSAMENTO COMPLETO
 # ============================================================
 
 def processar_csv(caminho):
 
     df = importar_arquivo(caminho)
 
-    if not validar_csv(df):
-
-        return None
+    validar_csv(df)
 
     df = classificar_lancamentos(df)
 
@@ -235,7 +380,7 @@ def processar_csv(caminho):
 
 
 # ============================================================
-# SALVAR E ATUALIZAR LANÇAMENTOS
+# SALVAMENTO NO BANCO
 # ============================================================
 
 def salvar_lancamentos(df):
@@ -244,22 +389,21 @@ def salvar_lancamentos(df):
     duplicados = 0
     categorias_atualizadas = 0
 
+    detalhes = []
+
     for _, linha in df.iterrows():
 
-        data = linha["data"]
-        descricao = linha["descricao"]
-        valor = linha["valor"]
+        data = linha["data"].strftime("%Y-%m-%d")
+
+        descricao = str(
+            linha["descricao"]
+        ).strip()
+
+        valor = float(
+            linha["valor"]
+        )
+
         tipo = linha["tipo"]
-
-        # ----------------------------------------------------
-        # CONVERTE DATA PARA TEXTO
-        # ----------------------------------------------------
-
-        data = data.strftime("%Y-%m-%d")
-
-        # ----------------------------------------------------
-        # CATEGORIZAÇÃO
-        # ----------------------------------------------------
 
         categoria = categorizar_lancamento(
             descricao
@@ -271,11 +415,13 @@ def salvar_lancamentos(df):
 
         if tipo == "receita":
 
-            if receita_existe(
+            existe = receita_existe(
                 descricao,
                 valor,
                 data
-            ):
+            )
+
+            if existe:
 
                 atualizar_categoria_receita(
                     descricao,
@@ -285,16 +431,20 @@ def salvar_lancamentos(df):
                 duplicados += 1
                 categorias_atualizadas += 1
 
-                continue
+                status = "Duplicado"
 
-            salvar_receita(
-                descricao,
-                categoria,
-                valor,
-                data
-            )
+            else:
 
-            novos += 1
+                salvar_receita(
+                    descricao,
+                    categoria,
+                    valor,
+                    data
+                )
+
+                novos += 1
+
+                status = "Novo"
 
         # ----------------------------------------------------
         # DESPESA
@@ -302,11 +452,13 @@ def salvar_lancamentos(df):
 
         else:
 
-            if despesa_existe(
+            existe = despesa_existe(
                 descricao,
                 valor,
                 data
-            ):
+            )
+
+            if existe:
 
                 atualizar_categoria_despesa(
                     descricao,
@@ -316,94 +468,128 @@ def salvar_lancamentos(df):
                 duplicados += 1
                 categorias_atualizadas += 1
 
-                continue
+                status = "Duplicado"
 
-            salvar_despesa(
-                descricao,
-                categoria,
-                valor,
-                data
-            )
+            else:
 
-            novos += 1
+                salvar_despesa(
+                    descricao,
+                    categoria,
+                    valor,
+                    data
+                )
 
-    # --------------------------------------------------------
-    # RESULTADO
-    # --------------------------------------------------------
+                novos += 1
 
-    print()
+                status = "Novo"
 
-    print(
-        f"✅ Novos lançamentos salvos: {novos}"
-    )
+        detalhes.append(
+            {
+                "descricao": descricao,
+                "tipo": (
+                    "Receita"
+                    if tipo == "receita"
+                    else "Despesa"
+                ),
+                "categoria": categoria,
+                "status": status,
+            }
+        )
 
-    print(
-        f"🔁 Lançamentos já existentes: {duplicados}"
-    )
-
-    print(
-        f"🏷️ Categorias atualizadas: "
-        f"{categorias_atualizadas}"
-    )
+    return {
+        "novos": novos,
+        "duplicados": duplicados,
+        "categorias_atualizadas": categorias_atualizadas,
+        "total": len(df),
+        "detalhes": pd.DataFrame(detalhes),
+    }
 
 
 # ============================================================
-# EXECUÇÃO
+# TESTE DO MÓDULO
 # ============================================================
 
 if __name__ == "__main__":
 
-    print("🤖 Importador FinPilot")
-    print()
+    caminho = (
+        Path(__file__).parent
+        / "extrato_excel_teste.xlsx"
+    )
 
-    pasta_projeto = Path(__file__).resolve().parent
+    print("\n📂 Arquivo utilizado:")
+    print(caminho)
 
-    arquivo = pasta_projeto / "extrato_excel_teste.xlsx"
+    dados = processar_csv(caminho)
 
-    print()
-    print("📂 Arquivo utilizado:")
-    print(arquivo)
+    print("\n✅ Arquivo importado com sucesso!\n")
 
-    dados = processar_csv(arquivo)
+    print(
+        dados[
+            [
+                "data",
+                "descricao",
+                "valor",
+                "tipo",
+                "categoria",
+            ]
+        ]
+    )
 
-    if dados is not None:
+    print("\n📊 Resumo:")
 
-        print()
-        print("✅ Arquivo importado com sucesso!")
-        print()
+    print(
+        f"Total de lançamentos: {len(dados)}"
+    )
 
-        print(dados)
-
-        print()
-        print("📊 Resumo:")
-
-        print(
-            f"Total de lançamentos: {len(dados)}"
+    print(
+        "Receitas:",
+        len(
+            dados[
+                dados["tipo"] == "receita"
+            ]
         )
+    )
 
-        print(
-            f"Receitas: "
-            f"{len(dados[dados['tipo'] == 'receita'])}"
+    print(
+        "Despesas:",
+        len(
+            dados[
+                dados["tipo"] == "despesa"
+            ]
         )
+    )
 
-        print(
-            f"Despesas: "
-            f"{len(dados[dados['tipo'] == 'despesa'])}"
-        )
+    print("\n🏷️ Categorização automática:")
 
-        print()
-        print("🏷️ Categorização automática:")
-        print()
+    print(
+        dados[
+            [
+                "descricao",
+                "tipo",
+                "categoria",
+            ]
+        ]
+    )
 
-        print(
-            dados[["descricao", "tipo"]].assign(
-                categoria=dados["descricao"].apply(
-                    categorizar_lancamento
-                )
-            )
-        )
+    print("\n💾 Salvando lançamentos...")
 
-        print()
-        print("💾 Salvando lançamentos...")
+    resultado = salvar_lancamentos(
+        dados
+    )
 
-        salvar_lancamentos(dados)
+    print(
+        "\n📊 Resultado da importação:"
+    )
+
+    print(
+        f"Novos: {resultado['novos']}"
+    )
+
+    print(
+        f"Duplicados: {resultado['duplicados']}"
+    )
+
+    print(
+        "Categorias atualizadas:",
+        resultado["categorias_atualizadas"]
+    )
