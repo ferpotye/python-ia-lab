@@ -1,373 +1,1310 @@
+import sys
+from datetime import datetime
+
+print("PYTHON DO PYCHARM:", sys.executable)
+
+from database import (
+    salvar_receita,
+    salvar_despesa,
+    buscar_receitas,
+    buscar_despesas,
+    salvar_meta,
+    buscar_metas,
+    atualizar_meta,
+    excluir_receita,
+    excluir_despesa,
+    excluir_meta
+)
+
+from analytics import gerar_relatorio
+
+
+LARGURA = 64
+
+
 # ============================================================
-# FINPILOT
-# Seu dinheiro. Seu controle.
+# FUNÇÕES AUXILIARES
 # ============================================================
 
-receitas = 0
-despesas = 0
-
-lista_receitas = []
-lista_despesas = []
-lista_metas = []
+def linha():
+    print("═" * LARGURA)
 
 
-opcao = ""
+def formatar_moeda(valor):
 
-def adicionar_valor_meta(lista_metas):
-    if not lista_metas:
-        print("⚠️ Nenhuma meta cadastrada.")
-        return
+    return (
+        f"R$ {valor:,.2f}"
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+    )
 
-    mostrar_metas(lista_metas)
+
+def formatar_data(data):
+
+    if not data:
+        return "-"
 
     try:
-        escolha = int(input("Digite o número da meta: ")) - 1
+
+        data_objeto = datetime.strptime(
+            data,
+            "%Y-%m-%d"
+        )
+
+        return data_objeto.strftime(
+            "%d/%m/%Y"
+        )
+
     except ValueError:
-        print("⚠️ Digite apenas o número da meta.")
-        return
 
-    if escolha < 0 or escolha >= len(lista_metas):
-        print("⚠️ Meta inválida.")
-        return
+        return str(data)
 
-    valor = ler_valor_positivo("Digite o valor a adicionar: R$ ")
 
-    lista_metas[escolha]["valor_atual"] += valor
+# ============================================================
+# CARREGAMENTO
+# ============================================================
 
-    print("✅ Valor adicionado à meta com sucesso!")
+def carregar_dados():
 
-def analisar_financas(receitas, despesas):
-    print("🤖 ANÁLISE FINANCEIRA")
-    print("=" * 60)
+    receitas = buscar_receitas()
+    despesas = buscar_despesas()
 
-    if receitas == 0:
-        print("⚠️ Cadastre pelo menos uma receita para gerar a análise.")
-        return
+    return receitas, despesas
 
-    percentual = calcular_percentual_despesas(receitas, despesas)
-    saldo = calcular_saldo(receitas, despesas)
 
-    print(f"💰 Renda total: R$ {receitas:.2f}")
-    print(f"💳 Despesas totais: R$ {despesas:.2f}")
-    print(f"💵 Saldo: R$ {saldo:.2f}")
-    print(f"📊 Renda comprometida: {percentual:.1f}%")
+# ============================================================
+# CÁLCULOS
+# ============================================================
+
+def calcular_saldo():
+
+    receitas, despesas = (
+        carregar_dados()
+    )
+
+    total_receitas = sum(
+        receita[3]
+        for receita in receitas
+    )
+
+    total_despesas = sum(
+        despesa[3]
+        for despesa in despesas
+    )
+
+    return (
+        total_receitas -
+        total_despesas
+    )
+
+
+def calcular_percentual_despesas():
+
+    receitas, despesas = (
+        carregar_dados()
+    )
+
+    total_receitas = sum(
+        receita[3]
+        for receita in receitas
+    )
+
+    total_despesas = sum(
+        despesa[3]
+        for despesa in despesas
+    )
+
+    if total_receitas == 0:
+
+        return 0
+
+    return (
+        total_despesas /
+        total_receitas *
+        100
+    )
+
+
+# ============================================================
+# HISTÓRICO
+# ============================================================
+
+def mostrar_historico():
+
+    receitas, despesas = (
+        carregar_dados()
+    )
+
     print()
 
-    if percentual < 50:
-        print("🟢 Suas despesas estão abaixo de 50% da sua renda.")
-    elif percentual < 80:
-        print("🟡 Suas despesas estão consumindo uma parcela significativa da renda.")
-    else:
-        print("🔴 Suas despesas estão consumindo uma parcela elevada da renda.")
+    linha()
+
+    print(
+        "📋 HISTÓRICO FINANCEIRO"
+        .center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    if not receitas and not despesas:
+
+        print(
+            "⚠️ Nenhum lançamento cadastrado."
+        )
+
+        return
+
+    if receitas:
+
+        print("💰 RECEITAS")
+        print()
+
+        for receita in receitas:
+
+            receita_id = receita[0]
+            descricao = receita[1]
+            categoria = receita[2]
+            valor = receita[3]
+            data = receita[4]
+
+            print(
+                f"🆔 ID: {receita_id}"
+            )
+
+            print(
+                f"📅 {formatar_data(data)}"
+            )
+
+            print(
+                f"   💰 {descricao}"
+            )
+
+            print(
+                f"   📂 {categoria}"
+            )
+
+            print(
+                f"   💵 {formatar_moeda(valor)}"
+            )
+
+            print()
+
+    if despesas:
+
+        print("💳 DESPESAS")
+        print()
+
+        for despesa in despesas:
+
+            despesa_id = despesa[0]
+            descricao = despesa[1]
+            categoria = despesa[2]
+            valor = despesa[3]
+            data = despesa[4]
+
+            print(
+                f"🆔 ID: {despesa_id}"
+            )
+
+            print(
+                f"📅 {formatar_data(data)}"
+            )
+
+            print(
+                f"   💳 {descricao}"
+            )
+
+            print(
+                f"   📂 {categoria}"
+            )
+
+            print(
+                f"   💵 {formatar_moeda(valor)}"
+            )
+
+            print()
+
+
+# ============================================================
+# RESUMO
+# ============================================================
+
+def mostrar_resumo():
+
+    receitas, despesas = (
+        carregar_dados()
+    )
+
+    total_receitas = sum(
+        receita[3]
+        for receita in receitas
+    )
+
+    total_despesas = sum(
+        despesa[3]
+        for despesa in despesas
+    )
+
+    saldo = (
+        total_receitas -
+        total_despesas
+    )
+
+    percentual = (
+        total_despesas /
+        total_receitas *
+        100
+        if total_receitas > 0
+        else 0
+    )
+
+    print()
+
+    linha()
+
+    print(
+        "📊 RESUMO FINANCEIRO"
+        .center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    print(
+        f"💰 Total de receitas: "
+        f"{formatar_moeda(total_receitas)}"
+    )
+
+    print(
+        f"💳 Total de despesas: "
+        f"{formatar_moeda(total_despesas)}"
+    )
+
+    print(
+        f"💵 Saldo: "
+        f"{formatar_moeda(saldo)}"
+    )
+
+    print(
+        f"📊 Renda comprometida: "
+        f"{percentual:.1f}%"
+    )
+
+    print()
+
+    print(
+        f"📈 Quantidade de receitas: "
+        f"{len(receitas)}"
+    )
+
+    print(
+        f"📉 Quantidade de despesas: "
+        f"{len(despesas)}"
+    )
+
+    print()
+
+    linha()
+
+
+# ============================================================
+# ANÁLISE
+# ============================================================
+
+def analisar_financas():
+
+    receitas, despesas = (
+        carregar_dados()
+    )
+
+    total_receitas = sum(
+        receita[3]
+        for receita in receitas
+    )
+
+    total_despesas = sum(
+        despesa[3]
+        for despesa in despesas
+    )
+
+    saldo = (
+        total_receitas -
+        total_despesas
+    )
+
+    percentual = (
+        total_despesas /
+        total_receitas *
+        100
+        if total_receitas > 0
+        else 0
+    )
+
+    print()
+
+    linha()
+
+    print(
+        "🤖 ANÁLISE FINANCEIRA"
+        .center(LARGURA)
+    )
+
+    linha()
+
+    print()
 
     if saldo > 0:
-        print("✅ Você está com saldo positivo.")
+
+        print(
+            f"✅ Seu saldo está positivo "
+            f"em {formatar_moeda(saldo)}."
+        )
+
     elif saldo == 0:
-        print("⚠️ Sua renda e suas despesas estão equilibradas.")
+
+        print(
+            "⚠️ Suas receitas e despesas "
+            "estão equilibradas."
+        )
+
     else:
-        print("🚨 Suas despesas estão maiores que suas receitas.")
+
+        print(
+            f"🚨 Suas despesas superam "
+            f"suas receitas em "
+            f"{formatar_moeda(abs(saldo))}."
+        )
+
+    print()
+
+    print(
+        f"📊 Você está comprometendo "
+        f"{percentual:.1f}% da sua renda."
+    )
+
+    if percentual < 50:
+
+        print(
+            "🟢 O percentual de despesas "
+            "está abaixo de 50%."
+        )
+
+    elif percentual <= 70:
+
+        print(
+            "🟡 O percentual de despesas "
+            "está entre 50% e 70%."
+        )
+
+    else:
+
+        print(
+            "🔴 O percentual de despesas "
+            "está acima de 70%."
+        )
+
+    print()
+
+    linha()
+
 
 # ============================================================
-# VALIDAÇÕES
+# METAS
 # ============================================================
 
-def ler_valor_positivo(mensagem):
-    while True:
-        try:
-            valor = float(input(mensagem))
+def adicionar_meta():
 
-            if valor > 0:
-                return valor
+    print()
 
-            print("⚠️ O valor precisa ser maior que zero.")
+    linha()
 
-        except ValueError:
-            print("⚠️ Digite um valor numérico válido.")
-# ============================================================
-# FUNÇÕES FINANCEIRAS
-# ============================================================
+    print(
+        "🎯 NOVA META".center(LARGURA)
+    )
 
+    linha()
 
-def calcular_percentual_despesas(receitas, despesas):
-    if receitas > 0:
-        return (despesas / receitas) * 100
-    return 0
+    print()
 
-def calcular_saldo(receitas, despesas):
-    return receitas - despesas
+    nome = input(
+        "Nome da meta: "
+    ).strip()
 
-def encontrar_maior_despesa(lista_despesas):
-    if lista_despesas:
-        return max(lista_despesas, key=lambda despesa: despesa["valor"])
-    return None
+    if not nome:
 
-def encontrar_maior_receita(lista_receitas):
-    if lista_receitas:
-        return max(lista_receitas, key=lambda receita: receita["valor"])
-    return None
-# ============================================================
-# FUNÇÕES DE METAS
-# ============================================================
+        print(
+            "❌ O nome da meta "
+            "não pode ficar vazio."
+        )
 
-def adicionar_meta(lista_metas):
-    print("🎯 Nova Meta")
-
-    nome = input("Digite o nome da meta: ")
-    valor_objetivo = ler_valor_positivo("Digite o valor objetivo: R$ ")
-    valor_atual = float(input("Quanto você já tem guardado? R$ "))
-
-    meta = {
-        "nome": nome,
-        "valor_objetivo": valor_objetivo,
-        "valor_atual": valor_atual
-    }
-
-    lista_metas.append(meta)
-
-    print(f"✅ Meta '{nome}' criada com sucesso!")
-
-
-def mostrar_metas(lista_metas):
-    print("🎯 Minhas Metas")
-
-    if not lista_metas:
-        print("   Nenhuma meta cadastrada.")
         return
 
-    for meta in lista_metas:
-        percentual = (meta["valor_atual"] / meta["valor_objetivo"]) * 100
+    try:
 
-        if percentual > 100:
-            percentual = 100
+        valor_objetivo = float(
+            input(
+                "Valor objetivo: R$ "
+            ).replace(",", ".")
+        )
+
+        valor_atual = float(
+            input(
+                "Valor inicial: R$ "
+            ).replace(",", ".")
+        )
+
+        if valor_objetivo <= 0:
+
+            print(
+                "❌ O valor objetivo "
+                "deve ser maior que zero."
+            )
+
+            return
+
+        if valor_atual < 0:
+
+            print(
+                "❌ O valor inicial "
+                "não pode ser negativo."
+            )
+
+            return
+
+        if valor_atual > valor_objetivo:
+
+            print(
+                "❌ O valor inicial "
+                "não pode ser maior que o objetivo."
+            )
+
+            return
+
+        salvar_meta(
+            nome,
+            valor_objetivo,
+            valor_atual
+        )
 
         print()
-        print(f"🎯 {meta['nome']}")
-        print(f"   💰 Guardado: R$ {meta['valor_atual']:.2f}")
-        print(f"   🎯 Objetivo: R$ {meta['valor_objetivo']:.2f}")
-        print(f"   📊 Progresso: {percentual:.1f}%")
-# ============================================================
-# PROGRAMA PRINCIPAL
-# ============================================================
 
-while opcao != "0":
+        print(
+            "✅ Meta criada com sucesso!"
+        )
 
-    print("=" * 60)
-    print("                 💰 FINPILOT")
-    print("          Seu dinheiro. Seu controle.")
-    print("=" * 60)
+    except ValueError:
 
-    print()
-    print("1 - 💰 Receitas")
-    print("2 - 💳 Despesas")
-    print("3 - 📊 Resumo financeiro")
-    print("4 - 🎯 Metas")
-    print("5 - 🤖 Análise com IA")
-    print("6 - 📋 Histórico")
-    print("0 - 🚪 Sair")
+        print(
+            "❌ Digite valores numéricos válidos."
+        )
 
-    print("=" * 60)
 
-    opcao = input("Escolha uma opção: ")
+def mostrar_metas():
+
+    metas = buscar_metas()
 
     print()
+
+    linha()
+
+    print(
+        "🎯 METAS FINANCEIRAS"
+        .center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    if not metas:
+
+        print(
+            "⚠️ Nenhuma meta cadastrada."
+        )
+
+        return
+
+    for meta in metas:
+
+        meta_id = meta[0]
+        nome = meta[1]
+        objetivo = meta[2]
+        atual = meta[3]
+
+        percentual = (
+            atual /
+            objetivo *
+            100
+            if objetivo > 0
+            else 0
+        )
+
+        if percentual > 100:
+
+            percentual = 100
+
+        print(
+            f"🎯 {nome}"
+        )
+
+        print(
+            f"   💰 "
+            f"{formatar_moeda(atual)} / "
+            f"{formatar_moeda(objetivo)}"
+        )
+
+        print(
+            f"   📊 Progresso: "
+            f"{percentual:.1f}%"
+        )
+
+        print(
+            f"   🆔 ID: {meta_id}"
+        )
+
+        print()
+
+
+def adicionar_dinheiro_meta():
+
+    metas = buscar_metas()
+
+    if not metas:
+
+        print(
+            "⚠️ Nenhuma meta cadastrada."
+        )
+
+        return
+
+    mostrar_metas()
+
+    try:
+
+        meta_id = int(
+            input(
+                "Digite o ID da meta: "
+            )
+        )
+
+        valor = float(
+            input(
+                "Quanto deseja adicionar? R$ "
+            ).replace(",", ".")
+        )
+
+        if valor <= 0:
+
+            print(
+                "❌ O valor deve ser maior que zero."
+            )
+
+            return
+
+        meta_encontrada = None
+
+        for meta in metas:
+
+            if meta[0] == meta_id:
+
+                meta_encontrada = meta
+
+                break
+
+        if meta_encontrada is None:
+
+            print(
+                "❌ Meta não encontrada."
+            )
+
+            return
+
+        valor_atual = meta_encontrada[3]
+
+        valor_objetivo = meta_encontrada[2]
+
+        novo_valor = (
+            valor_atual +
+            valor
+        )
+
+        if novo_valor > valor_objetivo:
+
+            novo_valor = valor_objetivo
+
+        atualizar_meta(
+            meta_id,
+            novo_valor
+        )
+
+        print()
+
+        print(
+            "✅ Valor adicionado à meta!"
+        )
+
+        print(
+            f"💰 Novo valor: "
+            f"{formatar_moeda(novo_valor)}"
+        )
+
+    except ValueError:
+
+        print(
+            "❌ Digite valores válidos."
+        )
+
+
+def excluir_meta_menu():
+
+    metas = buscar_metas()
+
+    if not metas:
+
+        print(
+            "⚠️ Nenhuma meta cadastrada."
+        )
+
+        return
+
+    mostrar_metas()
+
+    try:
+
+        meta_id = int(
+            input(
+                "Digite o ID da meta que deseja excluir: "
+            )
+        )
+
+        meta_encontrada = None
+
+        for meta in metas:
+
+            if meta[0] == meta_id:
+
+                meta_encontrada = meta
+
+                break
+
+        if meta_encontrada is None:
+
+            print(
+                "❌ Meta não encontrada."
+            )
+
+            return
+
+        confirmacao = input(
+            f"⚠️ Excluir a meta "
+            f"'{meta_encontrada[1]}'? "
+            f"(s/n): "
+        ).strip().lower()
+
+        if confirmacao == "s":
+
+            excluir_meta(
+                meta_id
+            )
+
+            print(
+                "✅ Meta excluída com sucesso!"
+            )
+
+        else:
+
+            print(
+                "❌ Exclusão cancelada."
+            )
+
+    except ValueError:
+
+        print(
+            "❌ Digite um ID válido."
+        )
+
+
+def menu_metas():
+
+    while True:
+
+        print()
+
+        linha()
+
+        print(
+            "🎯 METAS".center(LARGURA)
+        )
+
+        linha()
+
+        print()
+
+        print(
+            "1 - Criar meta"
+        )
+
+        print(
+            "2 - Ver metas"
+        )
+
+        print(
+            "3 - Adicionar dinheiro"
+        )
+
+        print(
+            "4 - Excluir meta"
+        )
+
+        print(
+            "0 - Voltar"
+        )
+
+        print()
+
+        opcao = input(
+            "Escolha uma opção: "
+        ).strip()
+
+        if opcao == "1":
+
+            adicionar_meta()
+
+        elif opcao == "2":
+
+            mostrar_metas()
+
+        elif opcao == "3":
+
+            adicionar_dinheiro_meta()
+
+        elif opcao == "4":
+
+            excluir_meta_menu()
+
+        elif opcao == "0":
+
+            break
+
+        else:
+
+            print(
+                "❌ Opção inválida."
+            )
+
+
+# ============================================================
+# RECEITAS
+# ============================================================
+
+def adicionar_receita():
+
+    print()
+
+    linha()
+
+    print(
+        "💰 NOVA RECEITA".center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    descricao = input(
+        "Descrição: "
+    ).strip()
+
+    if not descricao:
+
+        print(
+            "❌ A descrição "
+            "não pode ficar vazia."
+        )
+
+        return
+
+    categoria = input(
+        "Categoria: "
+    ).strip()
+
+    if not categoria:
+
+        categoria = "outros"
+
+    try:
+
+        valor = float(
+            input(
+                "Valor: R$ "
+            ).replace(",", ".")
+        )
+
+        if valor <= 0:
+
+            print(
+                "❌ O valor deve ser maior que zero."
+            )
+
+            return
+
+    except ValueError:
+
+        print(
+            "❌ Digite um valor válido."
+        )
+
+        return
+
+    data = input(
+        "Data (DD/MM/AAAA) "
+        "ou Enter para hoje: "
+    ).strip()
+
+    if not data:
+
+        data = datetime.now().strftime(
+            "%Y-%m-%d"
+        )
+
+    else:
+
+        try:
+
+            data_objeto = datetime.strptime(
+                data,
+                "%d/%m/%Y"
+            )
+
+            data = data_objeto.strftime(
+                "%Y-%m-%d"
+            )
+
+        except ValueError:
+
+            print(
+                "❌ Data inválida. "
+                "Use o formato DD/MM/AAAA."
+            )
+
+            return
+
+    salvar_receita(
+        descricao,
+        categoria,
+        valor,
+        data
+    )
+
+    print()
+
+    print(
+        "✅ Receita adicionada com sucesso!"
+    )
+
+
+def excluir_receita_menu():
+
+    receitas, _ = carregar_dados()
+
+    if not receitas:
+
+        print(
+            "⚠️ Nenhuma receita cadastrada."
+        )
+
+        return
+
+    print()
+
+    print("💰 RECEITAS")
+
+    print()
+
+    for receita in receitas:
+
+        print(
+            f"🆔 {receita[0]} | "
+            f"{formatar_data(receita[4])} | "
+            f"{receita[1]} | "
+            f"{formatar_moeda(receita[3])}"
+        )
+
+    print()
+
+    try:
+
+        receita_id = int(
+            input(
+                "Digite o ID da receita que deseja excluir: "
+            )
+        )
+
+        receita_encontrada = None
+
+        for receita in receitas:
+
+            if receita[0] == receita_id:
+
+                receita_encontrada = receita
+
+                break
+
+        if receita_encontrada is None:
+
+            print(
+                "❌ Receita não encontrada."
+            )
+
+            return
+
+        confirmacao = input(
+            f"⚠️ Excluir "
+            f"'{receita_encontrada[1]}'? "
+            f"(s/n): "
+        ).strip().lower()
+
+        if confirmacao == "s":
+
+            excluir_receita(
+                receita_id
+            )
+
+            print(
+                "✅ Receita excluída com sucesso!"
+            )
+
+        else:
+
+            print(
+                "❌ Exclusão cancelada."
+            )
+
+    except ValueError:
+
+        print(
+            "❌ Digite um ID válido."
+        )
+
+
+# ============================================================
+# DESPESAS
+# ============================================================
+
+def adicionar_despesa():
+
+    print()
+
+    linha()
+
+    print(
+        "💳 NOVA DESPESA".center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    descricao = input(
+        "Descrição: "
+    ).strip()
+
+    if not descricao:
+
+        print(
+            "❌ A descrição "
+            "não pode ficar vazia."
+        )
+
+        return
+
+    categoria = input(
+        "Categoria: "
+    ).strip()
+
+    if not categoria:
+
+        categoria = "outros"
+
+    try:
+
+        valor = float(
+            input(
+                "Valor: R$ "
+            ).replace(",", ".")
+        )
+
+        if valor <= 0:
+
+            print(
+                "❌ O valor deve ser maior que zero."
+            )
+
+            return
+
+    except ValueError:
+
+        print(
+            "❌ Digite um valor válido."
+        )
+
+        return
+
+    data = input(
+        "Data (DD/MM/AAAA) "
+        "ou Enter para hoje: "
+    ).strip()
+
+    if not data:
+
+        data = datetime.now().strftime(
+            "%Y-%m-%d"
+        )
+
+    else:
+
+        try:
+
+            data_objeto = datetime.strptime(
+                data,
+                "%d/%m/%Y"
+            )
+
+            data = data_objeto.strftime(
+                "%Y-%m-%d"
+            )
+
+        except ValueError:
+
+            print(
+                "❌ Data inválida. "
+                "Use o formato DD/MM/AAAA."
+            )
+
+            return
+
+    salvar_despesa(
+        descricao,
+        categoria,
+        valor,
+        data
+    )
+
+    print()
+
+    print(
+        "✅ Despesa adicionada com sucesso!"
+    )
+
+
+def excluir_despesa_menu():
+
+    _, despesas = carregar_dados()
+
+    if not despesas:
+
+        print(
+            "⚠️ Nenhuma despesa cadastrada."
+        )
+
+        return
+
+    print()
+
+    print("💳 DESPESAS")
+
+    print()
+
+    for despesa in despesas:
+
+        print(
+            f"🆔 {despesa[0]} | "
+            f"{formatar_data(despesa[4])} | "
+            f"{despesa[1]} | "
+            f"{formatar_moeda(despesa[3])}"
+        )
+
+    print()
+
+    try:
+
+        despesa_id = int(
+            input(
+                "Digite o ID da despesa que deseja excluir: "
+            )
+        )
+
+        despesa_encontrada = None
+
+        for despesa in despesas:
+
+            if despesa[0] == despesa_id:
+
+                despesa_encontrada = despesa
+
+                break
+
+        if despesa_encontrada is None:
+
+            print(
+                "❌ Despesa não encontrada."
+            )
+
+            return
+
+        confirmacao = input(
+            f"⚠️ Excluir "
+            f"'{despesa_encontrada[1]}'? "
+            f"(s/n): "
+        ).strip().lower()
+
+        if confirmacao == "s":
+
+            excluir_despesa(
+                despesa_id
+            )
+
+            print(
+                "✅ Despesa excluída com sucesso!"
+            )
+
+        else:
+
+            print(
+                "❌ Exclusão cancelada."
+            )
+
+    except ValueError:
+
+        print(
+            "❌ Digite um ID válido."
+        )
+
+
+# ============================================================
+# MENU PRINCIPAL
+# ============================================================
+
+def mostrar_menu():
+
+    print()
+
+    linha()
+
+    print(
+        "💰 FINPILOT".center(LARGURA)
+    )
+
+    print(
+        "Seu dinheiro. Seu controle."
+        .center(LARGURA)
+    )
+
+    linha()
+
+    print()
+
+    print(
+        "1 - 💰 Adicionar receita"
+    )
+
+    print(
+        "2 - 💳 Adicionar despesa"
+    )
+
+    print(
+        "3 - 📋 Ver histórico"
+    )
+
+    print(
+        "4 - 📊 Ver resumo"
+    )
+
+    print(
+        "5 - 🤖 Análise financeira"
+    )
+
+    print(
+        "6 - 🎯 Metas"
+    )
+
+    print(
+        "7 - 🗑️ Excluir receita"
+    )
+
+    print(
+        "8 - 🗑️ Excluir despesa"
+    )
+
+    print(
+        "0 - 🚪 Sair"
+    )
+
+    print()
+
+
+# ============================================================
+# EXECUÇÃO
+# ============================================================
+
+while True:
+
+    mostrar_menu()
+
+    opcao = input(
+        "Escolha uma opção: "
+    ).strip()
 
     if opcao == "1":
-        print("💰 Área de Receitas")
 
-        descricao = input("Digite a descrição da receita: ")
-        categoria = input("Digite a categoria da receita: ")
-
-        receita = ler_valor_positivo("Digite o valor da receita: R$ ")
-
-        receitas += receita
-        lista_receitas.append({
-            "descricao": descricao,
-            "categoria": categoria,
-            "valor": receita
-        })
-
-        print(f"✅ Receita de R$ {receita:.2f} registrada!")
-
-
-
+        adicionar_receita()
 
     elif opcao == "2":
 
-        print("💳 Área de Despesas")
-
-        descricao = input("Digite a descrição da despesa: ")
-        categoria = input("Digite a categoria da despesa: ")
-        despesa = ler_valor_positivo("Digite o valor da despesa: R$ ")
-
-        despesas += despesa
-
-        lista_despesas.append({
-            "descricao": descricao,
-            "categoria": categoria,
-            "valor": despesa
-        })
-
-        print(f"✅ Despesa de R$ {despesa:.2f} registrada!")
+        adicionar_despesa()
 
     elif opcao == "3":
 
-        print("📊 Resumo Financeiro")
-
-        saldo = calcular_saldo(receitas, despesas)
-
-        print()
-
-        print(f"💰 Total de receitas: R$ {receitas:.2f}")
-
-        print(f"💳 Total de despesas: R$ {despesas:.2f}")
-
-        print(f"💵 Saldo atual: R$ {saldo:.2f}")
-
-        print()
-
-        print(f"📈 Quantidade de receitas: {len(lista_receitas)}")
-
-        print(f"📉 Quantidade de despesas: {len(lista_despesas)}")
-
-        if lista_despesas:
-            maior_despesa = encontrar_maior_despesa(lista_despesas)
-
-            print()
-
-            print(f"🔝 Maior despesa: {maior_despesa['descricao']} — R$ {maior_despesa['valor']:.2f}")
-
-        if lista_receitas:
-            maior_receita = encontrar_maior_receita(lista_receitas)
-
-            print()
-
-            print(f"🔝 Maior receita: {maior_receita['descricao']} — R$ {maior_receita['valor']:.2f}")
-
-        percentual_despesas = calcular_percentual_despesas(receitas, despesas)
-
-        print()
-
-        print(f"📊 Percentual da renda comprometida: {percentual_despesas:.1f}%")
-
+        mostrar_historico()
 
     elif opcao == "4":
 
-        print("🎯 Área de Metas")
-
-        print()
-
-        print("1 - ➕ Criar nova meta")
-
-        print("2 - 📊 Ver minhas metas")
-
-        print("3 - 💰 Adicionar dinheiro a uma meta")
-
-        print("0 - ↩️ Voltar")
-
-        escolha_meta = input("Escolha uma opção: ")
-
-        if escolha_meta == "1":
-
-            adicionar_meta(lista_metas)
-
-
-        elif escolha_meta == "2":
-
-            mostrar_metas(lista_metas)
-
-
-        elif escolha_meta == "3":
-
-            adicionar_valor_meta(lista_metas)
-
-
-        elif escolha_meta == "0":
-
-            print("↩️ Voltando...")
-
-
-        else:
-
-            print("⚠️ Opção inválida.")
-
+        mostrar_resumo()
 
     elif opcao == "5":
 
-        analisar_financas(receitas, despesas)
-
-
-
+        gerar_relatorio()
 
     elif opcao == "6":
 
-        print("📋 HISTÓRICO DE LANÇAMENTOS")
+        menu_metas()
 
-        print("=" * 60)
+    elif opcao == "7":
 
-        total_lancamentos = len(lista_receitas) + len(lista_despesas)
+        excluir_receita_menu()
 
-        print(f"📊 Total de lançamentos: {total_lancamentos}")
+    elif opcao == "8":
 
-        print()
-
-        print("💰 RECEITAS")
-
-        if lista_receitas:
-
-            for receita in lista_receitas:
-                print(
-
-                    f"   + {receita['categoria']} | "
-
-                    f"{receita['descricao']} — "
-
-                    f"R$ {receita['valor']:.2f}"
-
-                )
-
-        else:
-
-            print("   Nenhuma receita cadastrada.")
-
-        print()
-
-        print("💳 DESPESAS")
-
-        if lista_despesas:
-
-            for despesa in lista_despesas:
-                print(
-
-                    f"   - {despesa['categoria']} | "
-
-                    f"{despesa['descricao']} — "
-
-                    f"R$ {despesa['valor']:.2f}"
-
-                )
-
-        else:
-
-            print("   Nenhuma despesa cadastrada.")
-
-        print()
-
-        print("=" * 60)
-
-        saldo_historico = calcular_saldo(receitas, despesas)
-
-        print(f"💰 Total de receitas: R$ {receitas:.2f}")
-
-        print(f"💳 Total de despesas: R$ {despesas:.2f}")
-
-        print(f"💵 Saldo atual: R$ {saldo_historico:.2f}")
-
+        excluir_despesa_menu()
 
     elif opcao == "0":
 
-        print("👋 Até logo!")
+        print()
 
+        print(
+            "👋 Até logo!"
+        )
+
+        break
 
     else:
 
-        print("⚠️ Opção inválida.")
+        print()
+
+        print(
+            "❌ Opção inválida."
+        )
